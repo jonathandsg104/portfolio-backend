@@ -1,0 +1,27 @@
+# Ignorar a pasta de dependências do Node.js
+node_modules/
+
+# Ignorar o arquivo de variáveis de ambiente (contém dados sensíveis, como senhas e chaves)
+.env
+
+# Ignorar arquivos de log (logs de erros e execução do servidor)
+logs/
+*.log
+
+# Ignorar arquivos de build ou compilação (se aplicável)
+dist/
+build/
+
+# Ignorar caches do sistema e do Node.js
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignorar pastas ou arquivos específicos do editor de código (ex.: VS Code)
+.vscode/
+.idea/
+
+# Ignorar arquivos temporários do sistema operacional
+.DS_Store
+Thumbs.db
