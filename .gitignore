@@ -25,3 +25,5 @@ yarn-error.log*
 # Ignorar arquivos temporários do sistema operacional
 .DS_Store
 Thumbs.db
+
+my-project-portifolio-1d23e-firebase-adminsdk-fbsvc-4afa9240b9.json
