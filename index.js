@@ -1,10 +1,30 @@
+require('dotenv').config(); // Importa variáveis de ambiente do .env
 const express = require('express');
 const cors = require('cors');
+const functions = require('firebase-functions'); // Importa o Firebase Functions
 const db = require('./firebaseConfig'); // Importa a configuração do Firebase
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// Configuração de CORS
+app.use(cors({
+  origin: ["https://jonathanportifolio.com.br", "http://localhost:3000"], // Permite localhost para desenvolvimento
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.use(express.json()); // Middleware para parse de JSON
+
+// Rota de autenticação
+app.post('/auth', (req, res) => {
+  const { password } = req.body;
+
+  if (password === process.env.ADMIN_PASSWORD) {
+    return res.status(200).json({ isAdmin: true }); // Autenticação bem-sucedida
+  } else {
+    return res.status(403).json({ isAdmin: false }); // Autenticação falhou
+  }
+});
 
 // Rota para buscar todos os projetos
 app.get('/projetos', async (req, res) => {
@@ -28,23 +48,18 @@ app.post('/projetos', async (req, res) => {
   try {
     const { title, description, url } = req.body;
 
-    // Validação básica
     if (!title || !description) {
       return res.status(400).json({ error: 'Título e descrição são obrigatórios.' });
     }
 
-    // Referência ao nó "projetos"
     const ref = db.ref('projetos');
-
-    // Verificar se "projetos" existe no banco
     const snapshot = await ref.once('value');
     if (!snapshot.exists()) {
       console.log('Chave "projetos" não encontrada. Criando chave...');
-      await ref.set({ placeholder: true }); // Placeholder inicial
+      await ref.set({ placeholder: true });
     }
 
-    // Adicionar novo projeto
-    const newProjectRef = ref.push(); // Cria um novo nó dentro de "projetos"
+    const newProjectRef = ref.push();
     await newProjectRef.set({ title, description, url });
 
     res.status(201).json({ id: newProjectRef.key, title, description, url });
@@ -62,7 +77,6 @@ app.delete('/projetos/:id', async (req, res) => {
   try {
     const ref = db.ref(`projetos/${id}`);
     const snapshot = await ref.once('value');
-    
     console.log('Dados encontrados no snapshot:', snapshot.val());
 
     if (snapshot.exists()) {
@@ -79,7 +93,15 @@ app.delete('/projetos/:id', async (req, res) => {
   }
 });
 
+// Porta local para desenvolvimento
 const PORT = 5000;
-app.listen(PORT, () => {
-  console.log(`Servidor backend rodando na porta ${PORT}`);
-});
+
+// Exporta o Express como uma Cloud Function
+exports.api = functions.https.onRequest(app);
+
+// Para rodar localmente apenas (opcional):
+if (!process.env.FUNCTIONS_EMULATOR) {
+  app.listen(PORT, () => {
+    console.log(`Servidor backend rodando na porta ${PORT}`);
+  });
+}
