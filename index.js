@@ -4,33 +4,66 @@ console.log(`Variável ADMIN_PASSWORD carregada: "${process.env.ADMIN_PASSWORD}"
 
 const express = require('express');
 const cors = require('cors');
+
 const functions = require('firebase-functions'); // Importa o Firebase Functions
 const db = require('./firebaseConfig'); // Importa a configuração do Firebase
 
 const app = express();
 
-// Configuração de CORS
-app.use(cors({
-  origin: [
-    "https://jonathanportifolio.com.br",
-    "https://my-project-portifolio-1d23e.web.app",
-    "http://localhost:3000",
-    "http://192.168.4.81:3000"
-  ], // Permite localhost e IP local para desenvolvimento
-  methods: ['GET', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Configuração CORS diretamente na função Firebase
+const allowedOrigins = [
+  'https://jonathanportifolio.com.br',
+  'http://localhost:3000',
+  'http://localhost:3001'
+];
+
+const corsOptions = {
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json()); // Middleware para parse de JSON
 
+// Função para aplicar CORS manualmente em cada rota
+function applyCors(req, res, next) {
+  const origin = req.headers.origin;
+  if (allowedOrigins.indexOf(origin) !== -1) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+}
+
+// Endpoint temporário para testar validação da senha
+app.post('/test-auth', applyCors, (req, res) => {
+  const { password } = req.body;
+  const isValid = password && password.trim().toLowerCase() === process.env.ADMIN_PASSWORD.trim().toLowerCase();
+  res.json({ passwordReceived: password, isValid });
+});
+
 // Rota de autenticação
-app.post('/auth', (req, res) => {
+app.post('/auth', applyCors, (req, res) => {
   const { password } = req.body;
 
   console.log(`Senha recebida: "${password}"`);
   console.log(`Senha esperada: "${process.env.ADMIN_PASSWORD}"`);
 
-  if (password === process.env.ADMIN_PASSWORD) {
+  if (password && password.trim().toLowerCase() === process.env.ADMIN_PASSWORD.trim().toLowerCase()) {
     return res.status(200).json({ isAdmin: true }); // Autenticação bem-sucedida
   } else {
     return res.status(403).json({ isAdmin: false }); // Autenticação falhou
@@ -38,7 +71,7 @@ app.post('/auth', (req, res) => {
 });
 
 // Rota para buscar todos os projetos
-app.get('/projetos', async (req, res) => {
+app.get('/projetos', applyCors, async (req, res) => {
   try {
     const ref = db.ref('projetos');
     ref.once('value', (snapshot) => {
@@ -54,8 +87,7 @@ app.get('/projetos', async (req, res) => {
   }
 });
 
-// Rota para adicionar um projeto
-app.post('/projetos', async (req, res) => {
+app.post('/projetos', applyCors, express.json(), async (req, res) => {
   try {
     const { title, description, url } = req.body;
 
@@ -81,7 +113,7 @@ app.post('/projetos', async (req, res) => {
 });
 
 // Rota para deletar um projeto
-app.delete('/projetos/:id', async (req, res) => {
+app.delete('/projetos/:id', applyCors, async (req, res) => {
   const { id } = req.params;
   console.log('ID recebido:', id);
 

@@ -1,23 +1,33 @@
-const fetch = require('node-fetch');
+const http = require('http');
 
-async function testAddProject() {
-  const project = {
-    title: "Projeto Teste",
-    description: "Descrição do projeto teste",
-    url: "https://teste.com"
-  };
+const data = JSON.stringify({
+  title: 'teste',
+  description: 'Projeto de teste',
+  url: 'http://teste.com'
+});
 
-  try {
-    const response = await fetch('http://localhost:5000/projetos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(project)
-    });
-    const data = await response.json();
-    console.log('Resposta do servidor:', data);
-  } catch (error) {
-    console.error('Erro ao adicionar projeto:', error);
+const options = {
+  hostname: 'localhost',
+  port: 5000,
+  path: '/projetos',
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Content-Length': data.length
   }
-}
+};
 
-testAddProject();
+const req = http.request(options, (res) => {
+  console.log(`Status: ${res.statusCode}`);
+
+  res.on('data', (d) => {
+    process.stdout.write(d);
+  });
+});
+
+req.on('error', (error) => {
+  console.error(error);
+});
+
+req.write(data);
+req.end();
